@@ -80,6 +80,17 @@ run_snippy() {
    raxmlHPC -f a -p 1234567890 -s clean.core.aln -x 1234567890 -# 100 -m GTRGAMMA -n clean.core.newick
    # correr snp-dists, para obtener matriz de distancias de SNPs
    snp-dists -j $(nproc) clean.core.aln > Genero_SNP_matrix.tsv
+   
+   # limpiar archivos finales
+   sed -i 's/coreSNP_//g' RAxML_bipartitions.clean.core.newick
+   sed -i 's/coreSNP_//g' clean.core.newick
+   sed -i 's/coreSNP_//g' Genero_SNP_matrix.tsv
+   
+   # renombrar archivos finales
+   mv RAxML_bipartitions.clean.core.newick RAxML_bipartitions.clean.core_${especie}.newick
+   mv clean.core.newick clean.core_${especie}.newick
+   mv Genero_SNP_matrix.tsv Genero_SNP_matrix_${especie}.tsv
+
 }
 
 # ---------------------------------------
