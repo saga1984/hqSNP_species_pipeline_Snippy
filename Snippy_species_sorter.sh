@@ -12,31 +12,26 @@ run_snippy() {
    # correr Snippy #
    #################
 
-   # asignar nombre clave de genoma de referencia , esta variable se debe ajustar para que guarde el nombre de la especie
-   ref_name=$(basename ${ref} | cut -d '/' -f '2' | cut -d '.' -f '3' | cut -d '_' -f '1')
+   # asignar nombre clave de genoma de referencia
+   ref_name=$(basename ${ref} .fa)
 
    # for loop para todos los ensambles dentro de la carpeta de ensambles ASSEMBLY
-   for ensamble in ASSEMBLY/*${ref_name}*.fa; do
+   for ensamble in ASSEMBLY/*${especie}*.fa; do
       # nombre corto de ensambles
-      ensamble_name="$(basename $ensamble .fa)"
+      ensamble_name="$(basename ${ensamble} .fa)"
       # fila en blanco (espacio)
       echo -e "\n"
       # imprime nombre de ensamble
-      echo "##########################################################################"
-      echo -e "  nombre del ensamble: ${ensamble}\tpalabra clave: ${ref_name}"
-      echo "##########################################################################"
+      echo "##########################################################"
+      echo "Ensamble: ${ensamble_name}; Referencia: ${ref_name}"
+      echo "##########################################################"
       echo ""
 
       # asignar directorio de salida para guardar resultados de Snippy
       dir="SNIPPY_${ref_name}"
-      # si los ensambles contienen la palabra clave del ensamble de referencia (ref_name), entonces ejecuta Snippy en ellos solamente
-      if [[ ${ensamble_name} =~ ${ref_name} ]]; then
-         # ejecuta Snippy
-         snippy --cpus $(nproc) --force --ref ${ref} --outdir ${dir}/coreSNP_${ensamble_name} --ctgs ${ensamble} \
-         --ram $(grep "MemTotal" /proc/meminfo | awk '{print $2/(1024 * 1024)}' | cut -d "." -f "1") # info de la ram, se divide para Gigas y se eliminan decimales
-      else
-         continue
-      fi
+      # ejecuta Snippy
+      snippy --cpus $(nproc) --force --ref ${ref} --outdir ${dir}/coreSNP_${ensamble_name} --ctgs ${ensamble} \
+      --ram $(grep "MemTotal" /proc/meminfo | awk '{print $2/(1024 * 1024)}' | cut -d "." -f "1") # info de la ram, se divide para Gigas y se eliminan decimales
    done
 
 #####################################################################################
@@ -46,12 +41,12 @@ run_snippy() {
    # moverse al directorio correspondiente
    cd ${dir}
 
-   echo "################################################################"
-   echo " ejecutando snippy core directamente en la ruta: $PWD"
-   echo -e "#############################################################\n"
+   echo "#########################"
+   echo " ejecutando snippy core "
+   echo -e "#########################\n"
 
    # ejecuta snippy-core
-   snippy-core --ref ../ASSEMBLY/$(basename ${ref} | cut -d '/' -f '2') --prefix core $(echo coreSNP*)
+   snippy-core --ref ../${ref} --prefix core $(echo coreSNP*)
 
    echo "############################################################"
    echo "  limpiando alineamiento para generar SNPs de alta calidad  "
@@ -93,9 +88,10 @@ run_snippy() {
 
 # variable que indica la forma correcta de usar el script
 USO() {
-echo -e "uso: $(basename $0) -a <reference assembly>"
-echo -e "  -a:\t assembly used to map for SNPs (mandatory argument)"
-echo -e "  -h:\t shows this help menu"
+echo -e "  uso:\t$(basename $0) -a <reference assembly> -e <species>\n"
+echo -e "  -a)\t assembly used to map for SNPs (mandatory argument)"
+echo -e "  -e)\t species of interest to filter assemblies (mandatory argument)\n"
+echo -e "  -h)\t shows this help menu"
 }
 
 # si el script no se ejecuta correctamente (sin argumentos/opciones), entonces indicar uso correcto y salir con error
@@ -109,22 +105,39 @@ fi
 # ----------------------------------------------------------------------
 
 # parseo de opciones/argumentos
-while getopts ":a:h"  opciones; do
+while getopts ":a:e:h"  opciones; do
    case "${opciones}" in
       a)
-         ref="${OPTARG}" # introducir ensamble de referencia
-         # mensaje de inicio de analisis
-         echo "#########################################################################################"
-         echo -e "Comenzando llamado de variantes, usando como genoma de referencia: ${OPTARG}"
-         echo "#########################################################################################"
-         echo ""
-         # correr Snippy
-         run_snippy
-         # mensaje de finalizacion de analisis
-         echo "#######################################"
-         echo -e "  Llamado de variantes terminado  "
-         echo "#######################################"
-         echo ""
+         # si no existe la opcion -e manda mensaje de uso y sal con error
+         if [[ $# -lt 3 ]]; then
+            echo -e "\n\tSpecies option/argument needed \n"
+            USO
+         else
+            ref="${OPTARG}" # introducir ensamble de referencia
+         fi
+         ;;
+      e)
+         especie="${OPTARG}" # introducir especie de interes
+         # si no existe la opcion -a manda mensaje de uso y sal con error
+         if [[ ! -z ${ref} ]]; then
+            # mensaje de inicio de analisis
+            echo "##################################################################################################"
+            echo -e "Comenzando llamado de variantes, usando como genoma de referencia: ${ref} y especie: ${especie}"
+            echo "##################################################################################################"
+            echo ""
+
+            # correr Snippy
+            run_snippy
+
+            # mensaje de finalizacion de analisis
+            echo "#######################################"
+            echo -e "  Llamado de variantes terminado  "
+            echo "#######################################"
+            echo ""
+         else
+            echo -e "\n\tReference assembly needed"
+            USO
+         fi
          ;;
       h)
          USO
